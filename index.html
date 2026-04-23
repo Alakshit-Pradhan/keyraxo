@@ -985,7 +985,7 @@
 
     <div class="action-row">
       <button class="btn" id="restartBtn">REMATCH</button>
-      <button class="btn ghost" id="menuBtn">MAIN MENU</button>
+      <button class="btn ghost" id="menuBtn">CHANGE FIGHTER</button>
     </div>
     <div class="credit">
       <span class="jp">製作</span>MADE BY <b>ALAKSHIT PRADHAN</b>
@@ -996,7 +996,10 @@
   <div class="overlay hidden" id="pauseScreen">
     <h1 class="brand" style="font-size: clamp(40px, 7vw, 88px);">PAUSED</h1>
     <div class="tagline"><span class="jp">休憩</span>Meditating...</div>
-    <button class="btn" id="resumeBtn">CONTINUE</button>
+    <div class="action-row">
+      <button class="btn" id="resumeBtn">CONTINUE</button>
+      <button class="btn ghost" id="pauseBackBtn">CHANGE FIGHTER</button>
+    </div>
   </div>
 </div>
 
@@ -2410,6 +2413,10 @@ function showCharScreen() {
   ensureAudio();
   startScreen.classList.add('hidden');
   charScreen.classList.remove('hidden');
+  document.querySelectorAll('.diff').forEach(b => {
+    b.classList.toggle('active', b.dataset.diff === state.diff);
+  });
+  updateHighScoreDisplay();
 }
 function backToHome() {
   charScreen.classList.add('hidden');
@@ -2471,8 +2478,32 @@ function endGame() {
 
 function goToMenu() {
   endScreen.classList.add('hidden');
-  charScreen.classList.add('hidden');
-  startScreen.classList.remove('hidden');
+  pauseScreen.classList.add('hidden');
+  startScreen.classList.add('hidden');
+  charScreen.classList.remove('hidden');
+  updateHighScoreDisplay();
+}
+
+function backToSelect() {
+  state.running = false;
+  state.paused = false;
+  state.words.forEach(w => w.el.remove());
+  state.words = [];
+  state.particles = [];
+  state.lasers = [];
+  state.shockwaves = [];
+  state.speedlines = [];
+  state.puOrbs.forEach(o => o.el.remove());
+  state.puOrbs = [];
+  state.inventory = [];
+  state.activeEffects = {};
+  state.target = null;
+  shieldAura.classList.remove('on');
+  renderPowerups();
+  pauseScreen.classList.add('hidden');
+  endScreen.classList.add('hidden');
+  startScreen.classList.add('hidden');
+  charScreen.classList.remove('hidden');
   updateHighScoreDisplay();
 }
 
@@ -2503,6 +2534,7 @@ $('startFightBtn').addEventListener('click', startGame);
 $('restartBtn').addEventListener('click', startGame);
 $('resumeBtn').addEventListener('click', resumeGame);
 $('menuBtn').addEventListener('click', goToMenu);
+$('pauseBackBtn').addEventListener('click', backToSelect);
 
 document.querySelectorAll('.diff').forEach(b => {
   b.addEventListener('click', () => {
