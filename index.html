@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
 <title>KEYRAXO TYPING — Anime Combat Typing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,12 +33,20 @@
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
+    /* Mobile: kill 300ms tap delay + prevent rubber-band scroll on iOS */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto;
   }
 
   #game {
     position: fixed;
     inset: 0;
     overflow: hidden;
+    /* touch-action: manipulation disables double-tap zoom but keeps pan/pinch-to-zoom
+       elsewhere. Combined with maximum-scale=1 in viewport meta, iOS won't zoom into
+       the hidden #mobileInput on focus. */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
     background:
       radial-gradient(ellipse at 50% 120%, #3a0f3a 0%, transparent 55%),
       radial-gradient(ellipse at 15% 10%, #4a0a2a 0%, transparent 50%),
@@ -889,6 +897,90 @@
     .btn { padding: 14px 36px; font-size: 18px; }
   }
 
+  /* ---------- TINY PHONES (≤380px) ---------- */
+  /* iPhone SE, small Androids. Squeeze the HUD, shrink the brand, compress
+     powerup slots. Instructions text drops a notch so it fits without wrapping
+     awkwardly. Applies on top of the 700px mobile styles above. */
+  @media (max-width: 380px) {
+    .brand { font-size: 44px; }
+    .brand-sub { font-size: 22px; letter-spacing: 0.25em; }
+    .tagline { font-size: 13px; }
+    .site-brand { font-size: 18px; }
+    .hud { padding: 4px 8px; top: 48px; }
+    .hud-group { gap: 8px; }
+    .stat b { font-size: 13px; }
+    .stat span { font-size: 8px; letter-spacing: 0.08em; }
+    .word { font-size: 17px; padding: 6px 11px; }
+    .word.boss { font-size: 22px; padding: 8px 13px; }
+    .powerups { top: 92px; right: 8px; gap: 6px; }
+    .pu-slot { width: 42px; height: 42px; font-size: 8px; border-width: 2px; }
+    .instructions { font-size: 11px; line-height: 1.7; padding: 0 12px; }
+    .instructions kbd { font-size: 10px; padding: 1px 6px; }
+    .char-grid { grid-template-columns: repeat(3, 1fr); max-width: 300px; gap: 6px; }
+    #emblem { width: 72px; height: 72px; bottom: 22px; }
+    .btn { padding: 12px 28px; font-size: 16px; letter-spacing: 0.2em; }
+    .diff { padding: 8px 12px; font-size: 10px; }
+    .attack-flash { font-size: 30px; }
+    .portrait-big { width: 130px; }
+    .credit { font-size: 9px; letter-spacing: 0.2em; }
+  }
+
+  /* ---------- TABLETS (701–1024px) ---------- */
+  /* iPads, Android tablets. Keep the desktop-style side-by-side character
+     select instead of stacking. Bigger touch targets on powerup slots and
+     buttons since fingers are still the input method. */
+  @media (min-width: 701px) and (max-width: 1024px) {
+    .char-main { flex-direction: row; align-items: stretch; }
+    .char-grid { max-width: 520px; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .char-info { width: 340px; }
+    .brand { font-size: clamp(72px, 10vw, 120px); }
+    .brand-sub { font-size: clamp(32px, 4vw, 46px); }
+    .pu-slot { width: 56px; height: 56px; font-size: 10px; }
+    .powerups { top: 110px; right: 18px; gap: 10px; }
+    .btn { padding: 18px 48px; font-size: 22px; }
+    .diff { padding: 14px 22px; font-size: 13px; }
+    .word { font-size: 24px; padding: 10px 16px; }
+    .word.boss { font-size: 30px; padding: 12px 18px; }
+    #emblem { width: 120px; height: 120px; }
+    .portrait-big { width: 200px; }
+    .instructions { font-size: 14px; max-width: 680px; }
+  }
+
+  /* ---------- LANDSCAPE PHONES (short viewports) ---------- */
+  /* Pixel/iPhone rotated sideways. Vertical space is the enemy — kill the
+     emblem (decorative, wastes bottom space), pull HUD up, widen the char
+     grid to 6 columns so the whole roster fits in view without scrolling,
+     shrink the home brand so PLAY stays visible above the fold. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .hud { top: 40px; padding: 4px 12px; }
+    .hud-group { gap: 12px; }
+    .stat b { font-size: 14px; }
+    .stat span { font-size: 8px; }
+    #emblem { display: none; }
+    .shield-aura { bottom: 10px; }
+    .char-grid {
+      grid-template-columns: repeat(6, 1fr);
+      max-width: 720px;
+      gap: 6px;
+    }
+    .char-main { flex-direction: row; align-items: stretch; gap: 14px; }
+    .char-info { width: 260px; }
+    .brand { font-size: 40px; }
+    .brand-sub { font-size: 18px; margin-bottom: 6px; }
+    .tagline { font-size: 12px; margin-bottom: 14px; }
+    .site-brand { font-size: 16px; top: 10px; }
+    .instructions { font-size: 11px; line-height: 1.6; margin-top: 10px; }
+    .btn { padding: 10px 28px; font-size: 16px; }
+    .diff { padding: 8px 14px; font-size: 11px; }
+    .powerups { top: 70px; right: 10px; gap: 6px; }
+    .pu-slot { width: 44px; height: 44px; font-size: 9px; }
+    .word { font-size: 18px; padding: 6px 12px; }
+    .word.boss { font-size: 22px; padding: 8px 14px; }
+    .game-back-btn { top: 6px; left: 6px; font-size: 9px; padding: 5px 9px; }
+    .portrait-big { width: 120px; }
+    .attack-flash { font-size: 28px; }
+  }
+
   /* ================= MOBILE / TOUCH SUPPORT ================= */
   /* Hidden input that triggers the phone's on-screen keyboard (Gboard/SwiftKey/etc.)
      Kept visually invisible but focusable. Positioned inside #game so it doesn't
@@ -1722,6 +1814,21 @@ const IS_TOUCH = (window.matchMedia && window.matchMedia('(pointer: coarse)').ma
               || ('ontouchstart' in window)
               || (navigator.maxTouchPoints > 0);
 
+// Cached game height for the kill-line calculation. Reading visualViewport.height
+// every frame caused jitter on mobile while the keyboard was animating — words
+// appeared to jump. Instead we cache here and refresh only on actual resize
+// events (window resize + visualViewport resize — both hooked at the bottom).
+let cachedGameHeight = window.innerHeight;
+function updateCachedGameHeight() {
+  const game = document.getElementById('game');
+  if (!game) { cachedGameHeight = window.innerHeight; return; }
+  let h = game.clientHeight;
+  if (IS_TOUCH && window.visualViewport) {
+    h = Math.min(h, window.visualViewport.height);
+  }
+  cachedGameHeight = h;
+}
+
 // ---------------- AUDIO ----------------
 let audioCtx = null;
 function ensureAudio() {
@@ -1786,12 +1893,39 @@ const fCtx = fxCanvas.getContext('2d');
 
 function resizeCanvases() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  // Capture old dimensions BEFORE resize so we can rescale petals proportionally.
+  // On mobile, when the on-screen keyboard opens, visualViewport.resize fires
+  // every few ms while the keyboard is animating. Each fire used to call
+  // initPetals() which re-randomized all 30–50 petals → visible "jump" on every
+  // tap. Fix: only initialize once; after that, just rescale relative positions.
+  const oldW = petalsCanvas.clientWidth;
+  const oldH = petalsCanvas.clientHeight;
+
   for (const c of [petalsCanvas, fxCanvas]) {
     c.width  = c.clientWidth  * dpr;
     c.height = c.clientHeight * dpr;
     c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  initPetals();
+
+  const newW = petalsCanvas.clientWidth;
+  const newH = petalsCanvas.clientHeight;
+
+  if (!state.petals || state.petals.length === 0) {
+    // First-ever resize or fresh game: generate petals.
+    initPetals();
+  } else if (oldW > 0 && oldH > 0 && (oldW !== newW || oldH !== newH)) {
+    // Dimensions actually changed (e.g. orientation flip, window resize on desktop).
+    // Rescale existing petals proportionally instead of re-randomizing them.
+    const sx = newW / oldW;
+    const sy = newH / oldH;
+    for (const p of state.petals) {
+      p.x *= sx;
+      p.y *= sy;
+    }
+  }
+  // else: dimensions unchanged (keyboard open/close on mobile doesn't resize
+  // #game because it's position:fixed). Keep petals exactly where they are.
 }
 window.addEventListener('resize', resizeCanvases);
 
@@ -2522,6 +2656,10 @@ if (mobileInput) {
 // so that iOS/Android will actually open the keyboard. Safari is strict here.
 function focusMobileInput() {
   if (!IS_TOUCH || !mobileInput) return;
+  // Early return if already focused. Calling focus() on an already-focused
+  // input on Android causes Gboard to flicker/jank on every tap — visible
+  // keyboard bounce while the user is typing. Skip the no-op.
+  if (document.activeElement === mobileInput) return;
   mobileInput.value = '';
   try { mobileInput.focus({ preventScroll: true }); }
   catch (_) { mobileInput.focus(); }
@@ -2619,13 +2757,12 @@ function loop(now) {
     }
 
     // Kill line: where a word "hits the base" and damages the player.
-    // On mobile, when the on-screen keyboard is open, window.visualViewport.height
-    // shrinks to the visible area above the keyboard — use THAT so words don't
-    // silently cross off-screen under the keyboard. Desktop keeps game.clientHeight.
-    let h = game.clientHeight;
-    if (IS_TOUCH && window.visualViewport) {
-      h = Math.min(h, window.visualViewport.height);
-    }
+    // On mobile, visualViewport.height jitters by several px every frame while
+    // the keyboard is animating in/out — if we read it here on each tick,
+    // words visually "jump" because their killLine keeps shifting. Fix:
+    // use a cached value that only updates on actual viewport resize events
+    // (see `updateCachedGameHeight` — hooked into window + visualViewport resize).
+    const h = cachedGameHeight;
     const killLine = h - 150;
     for (const w of [...state.words]) {
       let speed = w.speed;
@@ -2843,9 +2980,16 @@ if (IS_TOUCH) {
 
 // When the phone keyboard opens/closes, visualViewport resizes — force a
 // canvas redraw so petals/FX don't look stretched. (No effect on desktop.)
+// Also refresh the cached game height used for the kill-line calc.
+window.addEventListener('resize', updateCachedGameHeight);
 if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', resizeCanvases);
+  window.visualViewport.addEventListener('resize', () => {
+    resizeCanvases();
+    updateCachedGameHeight();
+  });
 }
+// Initial cache pass before the game loop reads it.
+updateCachedGameHeight();
 
 (function idle() {
   if (state.running) return;
