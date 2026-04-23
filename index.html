@@ -2108,7 +2108,8 @@ function destroyWord(w) {
   state.words = state.words.filter(x => x !== w);
   if (state.target === w) state.target = null;
 
-  if (state.waveKills >= WORDS_PER_WAVE) {
+  const waveComplete = state.isBossWave ? w.boss : (state.waveKills >= WORDS_PER_WAVE);
+  if (waveComplete) {
     state.wave += 1;
     state.waveKills = 0;
     state.isBossWave = (state.wave % BOSS_WAVE_EVERY === 0);
