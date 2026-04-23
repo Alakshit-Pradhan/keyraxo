@@ -984,11 +984,17 @@
   /* ================= MOBILE / TOUCH SUPPORT ================= */
   /* Hidden input that triggers the phone's on-screen keyboard (Gboard/SwiftKey/etc.)
      Kept visually invisible but focusable. Positioned inside #game so it doesn't
-     scroll the page. */
+     scroll the page.
+     IMPORTANT: positioned at TOP of screen, not bottom. iOS Safari aggressively
+     scrolls the document to bring a focused input above the on-screen keyboard —
+     if the input is near the bottom, that scroll-to-top happens every single
+     focus, causing a visible layout jump. preventScroll:true is unreliable on
+     iOS. Placing the input in the already-visible top area means iOS has no
+     reason to scroll. */
   #mobileInput {
     position: absolute;
     left: 50%;
-    bottom: 0;
+    top: 10px;
     transform: translateX(-50%);
     width: 1px;
     height: 1px;
@@ -1065,6 +1071,37 @@
     text-transform: uppercase;
     opacity: 0.85;
   }
+
+  /* ================= DEBUG OVERLAY ================= */
+  /* Enable with ?debug=1 in URL. Live shows mobile-relevant state so we can
+     diagnose glitches without a desktop DevTools connection. */
+  #debugOverlay {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 999;
+    background: rgba(0, 0, 0, 0.88);
+    color: #0f0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    line-height: 1.4;
+    padding: 6px 8px;
+    border: 1px solid #0f0;
+    pointer-events: auto;
+    white-space: pre;
+    max-width: 220px;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  #debugOverlay.hidden { display: none; }
+  #debugOverlay b { color: #ff0; font-weight: normal; }
+  #debugOverlay .warn { color: #f80; }
+  #debugOverlay .bad { color: #f33; }
+  #debugOverlay .close {
+    position: absolute; top: 2px; right: 4px;
+    color: #f33; cursor: pointer; font-size: 14px;
+    line-height: 1; padding: 2px 4px;
+  }
 </style>
 </head>
 <body>
@@ -1131,6 +1168,12 @@
 
   <!-- MOBILE: "Tap to type" hint shown when input loses focus during gameplay -->
   <div class="tap-hint" id="tapHint">TAP TO TYPE</div>
+
+  <!-- DEBUG OVERLAY: enable with ?debug=1 in URL. Shows live mobile state. -->
+  <div id="debugOverlay" class="hidden">
+    <span class="close" id="debugClose">×</span>
+    <div id="debugBody"></div>
+  </div>
 
   <!-- HOME SCREEN -->
   <div class="overlay" id="startScreen">
@@ -2671,12 +2714,19 @@ if (mobileInput) {
 
 // Focus helper — must be called INSIDE a user-gesture handler (tap/click)
 // so that iOS/Android will actually open the keyboard. Safari is strict here.
+let _focusLockUntil = 0;
 function focusMobileInput() {
   if (!IS_TOUCH || !mobileInput) return;
   // Early return if already focused. Calling focus() on an already-focused
-  // input on Android causes Gboard to flicker/jank on every tap — visible
-  // keyboard bounce while the user is typing. Skip the no-op.
+  // input on Android causes Gboard to flicker/jank on every tap.
   if (document.activeElement === mobileInput) return;
+  // Focus lock: while iOS/Android are in the middle of opening the keyboard,
+  // document.activeElement may not yet be mobileInput. If the user taps again
+  // during this window, we'd call focus() a second time → keyboard animation
+  // interrupts itself → visible flicker. Block re-entry for 300ms after a focus.
+  const now = performance.now();
+  if (now < _focusLockUntil) return;
+  _focusLockUntil = now + 300;
   mobileInput.value = '';
   try { mobileInput.focus({ preventScroll: true }); }
   catch (_) { mobileInput.focus(); }
@@ -3007,6 +3057,96 @@ if (window.visualViewport) {
 }
 // Initial cache pass before the game loop reads it.
 updateCachedGameHeight();
+
+// ================= DEBUG OVERLAY =================
+// Enable on any device by adding ?debug=1 to the URL (or #debug).
+// Shows live mobile-relevant state so the dev can pinpoint what's actually
+// "jumping" on each tap: visualViewport height, resize-event frequency,
+// active element (focus jumping?), petal count, FPS, cache vs live values.
+(function setupDebug() {
+  const url = new URL(window.location.href);
+  const debugOn = url.searchParams.get('debug') === '1' || location.hash === '#debug';
+  if (!debugOn) return;
+
+  const ov = document.getElementById('debugOverlay');
+  const body = document.getElementById('debugBody');
+  const closeBtn = document.getElementById('debugClose');
+  if (!ov || !body) return;
+  ov.classList.remove('hidden');
+  closeBtn.addEventListener('click', () => ov.classList.add('hidden'));
+
+  // Count events per second windows.
+  let vvResizes = 0, winResizes = 0, focusEvents = 0, blurEvents = 0;
+  let pointerDowns = 0;
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => { vvResizes++; });
+  }
+  window.addEventListener('resize', () => { winResizes++; });
+  document.addEventListener('focusin', () => { focusEvents++; }, true);
+  document.addEventListener('focusout', () => { blurEvents++; }, true);
+  if (game) {
+    game.addEventListener('pointerdown', () => { pointerDowns++; }, { passive: true, capture: true });
+  }
+
+  // FPS meter.
+  let fps = 0, frameCount = 0, lastFpsT = performance.now();
+  function fpsTick() {
+    frameCount++;
+    const now = performance.now();
+    if (now - lastFpsT >= 500) {
+      fps = Math.round((frameCount * 1000) / (now - lastFpsT));
+      frameCount = 0;
+      lastFpsT = now;
+    }
+    requestAnimationFrame(fpsTick);
+  }
+  requestAnimationFrame(fpsTick);
+
+  // Update the overlay content ~5x/sec so it stays readable.
+  setInterval(() => {
+    const vv = window.visualViewport;
+    const ae = document.activeElement;
+    const aeId = ae ? (ae.id || ae.tagName) : 'null';
+    const inner = window.innerHeight;
+    const gameH = game ? game.clientHeight : -1;
+    const vvH = vv ? Math.round(vv.height) : -1;
+    const vvOffsetTop = vv ? Math.round(vv.offsetTop) : -1;
+    const pc = petalsCanvas;
+    const pw = pc.width, phh = pc.height;
+    const cw = pc.clientWidth, ch = pc.clientHeight;
+    const kbdOpen = vv ? (inner - vv.height > 100 ? 'YES' : 'no') : '?';
+    const warnVV = vvResizes > 15 ? 'warn' : '';
+    body.textContent =
+      'KEYRAXO DEBUG\n' +
+      '─────────────\n' +
+      'window.innerH : ' + inner + '\n' +
+      'vv.height     : ' + vvH + '\n' +
+      'vv.offsetTop  : ' + vvOffsetTop + '\n' +
+      'game.clientH  : ' + gameH + '\n' +
+      'cachedGameH   : ' + cachedGameHeight + '\n' +
+      'keyboard open : ' + kbdOpen + '\n' +
+      '─────────────\n' +
+      'petalsCanvas  : ' + pw + '×' + phh + '\n' +
+      'petals client : ' + cw + '×' + ch + '\n' +
+      'petal count   : ' + (state.petals ? state.petals.length : 0) + '\n' +
+      '─────────────\n' +
+      'FPS           : ' + fps + '\n' +
+      'vv resizes /s : ' + vvResizes + '\n' +
+      'win resizes /s: ' + winResizes + '\n' +
+      'pointerdowns  : ' + pointerDowns + '\n' +
+      'focus evts /s : ' + focusEvents + '\n' +
+      'blur evts /s  : ' + blurEvents + '\n' +
+      'activeElement : ' + aeId + '\n' +
+      '─────────────\n' +
+      'state.running : ' + state.running + '\n' +
+      'state.paused  : ' + state.paused;
+    // Reset per-second counters every display tick (0.2s) but rescale to /s.
+    // Actually we display per-tick. For clarity we treat them as last-200ms counts.
+    vvResizes = 0; winResizes = 0; focusEvents = 0; blurEvents = 0; pointerDowns = 0;
+  }, 200);
+
+  console.log('[keyraxo] debug overlay enabled. Remove ?debug=1 from URL to disable.');
+})();
 
 (function idle() {
   if (state.running) return;
