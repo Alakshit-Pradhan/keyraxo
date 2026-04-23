@@ -1011,36 +1011,6 @@
     outline: none;
   }
 
-  /* "TAP TO TYPE" hint — shown only on touch devices when input is not focused
-     during gameplay. Prompts user to tap and reopen the keyboard. */
-  .tap-hint {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 20;
-    font-family: 'Bungee', sans-serif;
-    font-size: 22px;
-    letter-spacing: 0.3em;
-    color: var(--ink);
-    text-shadow: 0 0 16px var(--c1), 3px 3px 0 #000, -2px -2px 0 #000,
-                  2px -2px 0 #000, -2px 2px 0 #000;
-    background: rgba(10, 6, 18, 0.85);
-    border: 3px solid var(--sakura);
-    padding: 14px 26px;
-    box-shadow: 5px 5px 0 #000, 0 0 24px var(--sakura);
-    pointer-events: none;
-    display: none;
-    animation: tapHintPulse 1.1s ease-in-out infinite alternate;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-  .tap-hint.show { display: block; }
-  @keyframes tapHintPulse {
-    from { transform: translate(-50%, -50%) scale(1); opacity: 0.85; }
-    to   { transform: translate(-50%, -50%) scale(1.06); opacity: 1; }
-  }
-
   /* On touch devices: make powerup slots tappable (keys 1–4 are hard on phones) */
   @media (pointer: coarse) {
     .powerups { pointer-events: auto; }
@@ -1165,9 +1135,6 @@
          spellcheck="false"
          aria-label="Typing input"
          tabindex="-1" />
-
-  <!-- MOBILE: "Tap to type" hint shown when input loses focus during gameplay -->
-  <div class="tap-hint" id="tapHint">TAP TO TYPE</div>
 
   <!-- DEBUG OVERLAY: enable with ?debug=1 in URL. Shows live mobile state. -->
   <div id="debugOverlay" class="hidden">
@@ -1848,7 +1815,6 @@ const charSig     = $('charSig');
 const charDesc    = $('charDesc');
 const charInfo    = $('charInfo');
 const mobileInput = $('mobileInput');
-const tapHint     = $('tapHint');
 
 // ---------------- DEVICE DETECTION ----------------
 // True on phones / tablets / touchscreens. Also true for laptops with touch
@@ -2704,34 +2670,16 @@ if (mobileInput) {
   // Belt-and-braces: if any char slips past beforeinput (rare IME paths),
   // still reset so the input stays empty.
   mobileInput.addEventListener('input', () => { mobileInput.value = ''; });
-
-  // Track focus so we can show the "TAP TO TYPE" hint when the user's keyboard
-  // has collapsed (happens on Android back-gesture, iOS Done button, etc.)
-  mobileInput.addEventListener('focus', () => {
-    if (tapHint) tapHint.classList.remove('show');
-  });
-  mobileInput.addEventListener('blur', () => {
-    if (state.running && !state.paused && IS_TOUCH && tapHint) {
-      tapHint.classList.add('show');
-    }
-  });
 }
 
 // Focus helper — must be called INSIDE a user-gesture handler (tap/click)
 // so that iOS/Android will actually open the keyboard. Safari is strict here.
-let _focusLockUntil = 0;
+// Only called from explicit lifecycle points now (startGame, resumeGame) —
+// NOT on every tap. This eliminates the per-tap focus churn that was causing
+// keyboard flicker/glitch on mobile.
 function focusMobileInput() {
   if (!IS_TOUCH || !mobileInput) return;
-  // Early return if already focused. Calling focus() on an already-focused
-  // input on Android causes Gboard to flicker/jank on every tap.
   if (document.activeElement === mobileInput) return;
-  // Focus lock: while iOS/Android are in the middle of opening the keyboard,
-  // document.activeElement may not yet be mobileInput. If the user taps again
-  // during this window, we'd call focus() a second time → keyboard animation
-  // interrupts itself → visible flicker. Block re-entry for 300ms after a focus.
-  const now = performance.now();
-  if (now < _focusLockUntil) return;
-  _focusLockUntil = now + 300;
   mobileInput.value = '';
   try { mobileInput.focus({ preventScroll: true }); }
   catch (_) { mobileInput.focus(); }
@@ -2739,20 +2687,15 @@ function focusMobileInput() {
 function blurMobileInput() {
   if (!mobileInput) return;
   mobileInput.blur();
-  if (tapHint) tapHint.classList.remove('show');
 }
 
-// Tap anywhere in the game area during gameplay to re-focus the hidden input
-// (re-opens the phone keyboard if the user dismissed it).
-if (IS_TOUCH) {
-  game.addEventListener('pointerdown', e => {
-    if (!state.running || state.paused) return;
-    // Don't hijack taps on powerup slots / back button — those have their own handlers.
-    const t = e.target;
-    if (t && (t.closest('.pu-slot') || t.closest('.game-back-btn') || t.closest('.overlay'))) return;
-    focusMobileInput();
-  }, { passive: true });
-}
+// NOTE: Previous versions had a `game.pointerdown` handler here that re-focused
+// the hidden input on every tap during gameplay. That caused keyboard flicker
+// (rapid re-focus calls during iOS keyboard animation) and was the source of
+// the "glitch on every tap" reports. Removed: the keyboard now stays open
+// from startGame() until the user explicitly pauses (EXIT/ESC) or the game
+// ends. If the keyboard is dismissed externally (Android back, iOS Done), the
+// user re-opens it by pressing EXIT → CONTINUE.
 
 function handleKey(ch) {
   if (!state.target) {
