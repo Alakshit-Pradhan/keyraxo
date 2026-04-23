@@ -3045,15 +3045,19 @@ if (IS_TOUCH) {
   if (badge) badge.style.display = 'inline-block';
 }
 
-// When the phone keyboard opens/closes, visualViewport resizes — force a
-// canvas redraw so petals/FX don't look stretched. (No effect on desktop.)
-// Also refresh the cached game height used for the kill-line calc.
+// When the phone keyboard opens/closes, visualViewport.resize fires repeatedly.
+// We ONLY refresh the cached game height here (cheap, non-visual). We DO NOT
+// touch the canvas buffers: on some Android Chrome builds (pre-108, or with
+// interactive-widget=resizes-content) #game.clientHeight actually shrinks when
+// the keyboard opens — which would make resizeCanvases() fail its early-out,
+// re-assign c.width/c.height, and thereby CLEAR both canvases (spec behavior)
+// every keyboard animation frame. That's the user-visible flicker.
+//
+// Orientation flips and real window resizes are handled by the separate
+// window.addEventListener('resize', resizeCanvases) hook above (line ~1990).
 window.addEventListener('resize', updateCachedGameHeight);
 if (window.visualViewport) {
-  window.visualViewport.addEventListener('resize', () => {
-    resizeCanvases();
-    updateCachedGameHeight();
-  });
+  window.visualViewport.addEventListener('resize', updateCachedGameHeight);
 }
 // Initial cache pass before the game loop reads it.
 updateCachedGameHeight();
