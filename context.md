@@ -4,7 +4,7 @@
 
 ---
 
-## 👤 Developer
+## Developer
 
 - **Name:** Alakshit Pradhan
 - **Age:** 18, independent developer from India
@@ -12,7 +12,7 @@
 
 ---
 
-## 🔗 Project Links
+## Project Links
 
 - **Live game:** https://alakshit-pradhan.github.io/keyraxo/
 - **GitHub repo:** https://github.com/Alakshit-Pradhan/keyraxo
@@ -21,7 +21,7 @@
 
 ---
 
-## 🎮 Game Overview
+## Game Overview
 
 **KEYRAXO TYPING** is an anime-themed, ZType-style typing game inspired by shonen battle anime (Bleach, Naruto, Dragon Ball, One Piece).
 
@@ -36,7 +36,7 @@
 
 ---
 
-## 🗂 Tech Stack
+## Tech Stack
 
 - **Single-file HTML** — all HTML, CSS, and JS in one `index.html`
 - **Vanilla JavaScript** — no frameworks (no React, Vue, etc.)
@@ -50,7 +50,7 @@
 
 ---
 
-## 👥 12 Fighters (character roster)
+## 12 Fighters (character roster)
 
 | ID | Full Name | Anime | Kanji | Signature |
 |---|---|---|---|---|
@@ -76,7 +76,7 @@ Each fighter has:
 
 ---
 
-## 🖼 Image System
+## Image System
 
 - Character cards and info panels attempt to load `images/{characterId}.jpg`
 - If the file is missing or fails to load, an inline SVG portrait renders as fallback via `onerror` handler
@@ -85,7 +85,7 @@ Each fighter has:
 
 ---
 
-## 🎚 Difficulty Levels
+## Difficulty Levels
 
 | Level | Base Speed | Speed/Wave | Base Spawn | Hard Word % | Medium Word % |
 |---|---|---|---|---|---|
@@ -98,7 +98,7 @@ Each fighter has:
 
 ---
 
-## ⚡ Powerups (inventory system)
+## Powerups (inventory system)
 
 | Slot | Name | Effect | Duration |
 |---|---|---|---|
@@ -111,7 +111,7 @@ Pink bonus words occasionally drop powerup orbs when destroyed.
 
 ---
 
-## 🎨 Visual Identity
+## Visual Identity
 
 - **Background:** Dark purple/crimson radial gradients with breathing aura
 - **Particles:** Sakura petals (30–50) drifting with swaying motion
@@ -129,7 +129,7 @@ Pink bonus words occasionally drop powerup orbs when destroyed.
 
 ---
 
-## 🧭 Navigation Flow
+## Navigation Flow
 
 ```
 Home (PLAY)
@@ -147,7 +147,7 @@ Gameplay
 
 ---
 
-## 🔧 Key Design Decisions & Bug Fixes History
+## Key Design Decisions & Bug Fixes History
 
 1. **Word visibility fix** — words use solid dark background + thick black text outline + white border so they never blend with the sakura background, even on complex scenes.
 2. **Boss wave stuck bug fix** — originally required 12 kills to advance, but boss waves only spawn 1 boss. Fixed: on boss wave, killing the boss completes the wave immediately.
@@ -157,7 +157,7 @@ Gameplay
 
 ---
 
-## 💬 Communication Preferences (for future AI assistants)
+## Communication Preferences (for future AI assistants)
 
 - Reply in **English + Hindi mix** (Hinglish) — casual, direct, beginner-friendly tone
 - Deliver **complete paste-ready files** — no truncation, no "rest of the code here" placeholders
@@ -169,7 +169,7 @@ Gameplay
 
 ---
 
-## 📋 Deployment Workflow (no local setup)
+## Deployment Workflow (no local setup)
 
 1. Open `github.com/Alakshit-Pradhan/keyraxo` in browser
 2. Click `index.html` → ✏️ pencil (edit)
@@ -180,7 +180,7 @@ Gameplay
 
 ---
 
-## 🚀 Future Feature Ideas (roadmap — not yet built)
+## Future Feature Ideas (roadmap — not yet built)
 
 - [ ] Daily challenge mode (fixed seed, shareable scores)
 - [ ] Global leaderboard (would require backend — Firebase / Supabase)
@@ -197,12 +197,11 @@ When adding any of these, **read the existing code carefully first** and preserv
 
 ---
 
-## 🙏 Credits
+## Credits
 
 - **Code, design, direction:** Alakshit Pradhan
-- **Assistance:** Iterative collaboration with Claude (Anthropic)
+- **Assistance:** Iterative collaboration with Claude (Anthropic) and chat gpt
 - **Fonts:** Google Fonts (Bungee family, Russo One, Rubik, Share Tech Mono, Noto Sans JP)
-- **Inspiration:** ZType (zty.pe) for the typing-shooter mechanic; Bleach, Naruto, Dragon Ball, One Piece for the fighter roster
 
 ---
 
