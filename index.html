@@ -1894,11 +1894,30 @@ const fCtx = fxCanvas.getContext('2d');
 function resizeCanvases() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-  // Capture old dimensions BEFORE resize so we can rescale petals proportionally.
-  // On mobile, when the on-screen keyboard opens, visualViewport.resize fires
-  // every few ms while the keyboard is animating. Each fire used to call
-  // initPetals() which re-randomized all 30–50 petals → visible "jump" on every
-  // tap. Fix: only initialize once; after that, just rescale relative positions.
+  // Compute target drawing-buffer size BEFORE touching anything.
+  const targetW = petalsCanvas.clientWidth  * dpr;
+  const targetH = petalsCanvas.clientHeight * dpr;
+
+  // ====== CRITICAL MOBILE EARLY-OUT ======
+  // Assigning c.width or c.height — EVEN TO THE SAME VALUE — clears the entire
+  // canvas to transparent (spec-defined browser behavior). On mobile, the
+  // on-screen keyboard fires visualViewport.resize ~10–15 times in 200ms while
+  // it animates in/out. Each call to this function was clearing both canvases
+  // and leaving them blank for 1 frame until the next rAF redrew — producing
+  // the visible "flash/flicker" glitch the user sees on every tap-to-type.
+  //
+  // Fix: if the drawing buffer is already the correct size, DO NOT reassign
+  // c.width / c.height. Skip the whole thing. This turns ~15 flashing resizes
+  // per keyboard animation into zero.
+  if (petalsCanvas.width === targetW && petalsCanvas.height === targetH &&
+      fxCanvas.width     === targetW && fxCanvas.height     === targetH) {
+    // Still initialize petals on first run if somehow empty.
+    if (!state.petals || state.petals.length === 0) initPetals();
+    return;
+  }
+
+  // Capture old CSS dimensions BEFORE we mutate the buffer — used for
+  // proportional petal rescaling on real resizes (orientation flip etc.).
   const oldW = petalsCanvas.clientWidth;
   const oldH = petalsCanvas.clientHeight;
 
@@ -1924,8 +1943,6 @@ function resizeCanvases() {
       p.y *= sy;
     }
   }
-  // else: dimensions unchanged (keyboard open/close on mobile doesn't resize
-  // #game because it's position:fixed). Keep petals exactly where they are.
 }
 window.addEventListener('resize', resizeCanvases);
 
