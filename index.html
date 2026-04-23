@@ -1938,23 +1938,26 @@ function resizeCanvases() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
   // Compute target drawing-buffer size BEFORE touching anything.
-  const targetW = petalsCanvas.clientWidth  * dpr;
-  const targetH = petalsCanvas.clientHeight * dpr;
-
-  // ====== CRITICAL MOBILE EARLY-OUT ======
-  // Assigning c.width or c.height — EVEN TO THE SAME VALUE — clears the entire
-  // canvas to transparent (spec-defined browser behavior). On mobile, the
-  // on-screen keyboard fires visualViewport.resize ~10–15 times in 200ms while
-  // it animates in/out. Each call to this function was clearing both canvases
-  // and leaving them blank for 1 frame until the next rAF redrew — producing
-  // the visible "flash/flicker" glitch the user sees on every tap-to-type.
+  // CRITICAL: Math.floor() is NOT cosmetic — it's the difference between the
+  // early-out firing and not firing on mid-range Android phones.
   //
-  // Fix: if the drawing buffer is already the correct size, DO NOT reassign
-  // c.width / c.height. Skip the whole thing. This turns ~15 flashing resizes
-  // per keyboard animation into zero.
+  // The HTML spec says canvas.width/height truncate to unsigned long on assignment.
+  // So `c.width = 983.75` actually stores `983`. When we later READ c.width we
+  // get 983 back. If we compare against a freshly-computed `787 * 1.25 = 983.75`,
+  // the check `c.width === targetW` is `983 === 983.75` which is ALWAYS FALSE.
+  //
+  // Phones with integer devicePixelRatio (2, 3 — iPhones, high-end Androids) were
+  // fine. Phones with fractional DPR (1.5, 1.75, 2.625 — Samsung A/J budget line,
+  // older devices) hit this bug on every window.resize event. Mobile Chrome fires
+  // window.resize when the URL bar hides/shows during tap — which is essentially
+  // every tap. Each call cleared both canvases to transparent for 1 frame →
+  // visible flash/flicker on every tap-to-type.
+  const targetW = Math.floor(petalsCanvas.clientWidth  * dpr);
+  const targetH = Math.floor(petalsCanvas.clientHeight * dpr);
+
+  // ====== EARLY-OUT (now actually works on fractional-DPR devices) ======
   if (petalsCanvas.width === targetW && petalsCanvas.height === targetH &&
       fxCanvas.width     === targetW && fxCanvas.height     === targetH) {
-    // Still initialize petals on first run if somehow empty.
     if (!state.petals || state.petals.length === 0) initPetals();
     return;
   }
@@ -1965,8 +1968,10 @@ function resizeCanvases() {
   const oldH = petalsCanvas.clientHeight;
 
   for (const c of [petalsCanvas, fxCanvas]) {
-    c.width  = c.clientWidth  * dpr;
-    c.height = c.clientHeight * dpr;
+    // Use the same integer values we compared above — stay consistent so the
+    // next call's early-out will match.
+    c.width  = targetW;
+    c.height = targetH;
     c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
