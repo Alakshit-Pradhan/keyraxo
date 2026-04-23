@@ -888,6 +888,91 @@
     .portrait-big { width: 160px; }
     .btn { padding: 14px 36px; font-size: 18px; }
   }
+
+  /* ================= MOBILE / TOUCH SUPPORT ================= */
+  /* Hidden input that triggers the phone's on-screen keyboard (Gboard/SwiftKey/etc.)
+     Kept visually invisible but focusable. Positioned inside #game so it doesn't
+     scroll the page. */
+  #mobileInput {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    margin: 0;
+    opacity: 0;
+    background: transparent;
+    color: transparent;
+    caret-color: transparent;
+    font-size: 16px; /* 16px+ prevents iOS auto-zoom on focus */
+    z-index: -1;
+    pointer-events: none;
+    outline: none;
+  }
+
+  /* "TAP TO TYPE" hint — shown only on touch devices when input is not focused
+     during gameplay. Prompts user to tap and reopen the keyboard. */
+  .tap-hint {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    font-family: 'Bungee', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.3em;
+    color: var(--ink);
+    text-shadow: 0 0 16px var(--c1), 3px 3px 0 #000, -2px -2px 0 #000,
+                  2px -2px 0 #000, -2px 2px 0 #000;
+    background: rgba(10, 6, 18, 0.85);
+    border: 3px solid var(--sakura);
+    padding: 14px 26px;
+    box-shadow: 5px 5px 0 #000, 0 0 24px var(--sakura);
+    pointer-events: none;
+    display: none;
+    animation: tapHintPulse 1.1s ease-in-out infinite alternate;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .tap-hint.show { display: block; }
+  @keyframes tapHintPulse {
+    from { transform: translate(-50%, -50%) scale(1); opacity: 0.85; }
+    to   { transform: translate(-50%, -50%) scale(1.06); opacity: 1; }
+  }
+
+  /* On touch devices: make powerup slots tappable (keys 1–4 are hard on phones) */
+  @media (pointer: coarse) {
+    .powerups { pointer-events: auto; }
+    .pu-slot {
+      pointer-events: auto;
+      cursor: pointer;
+      -webkit-tap-highlight-color: rgba(255, 216, 77, 0.35);
+    }
+    .pu-slot:active {
+      transform: scale(0.92);
+      box-shadow: 1px 1px 0 var(--inkblack), 0 0 28px var(--c1);
+    }
+    /* Hide the "[1]" / "[2]" keybind hints on touch — they're meaningless on phones */
+    .pu-slot .key { display: none; }
+  }
+
+  /* Touch-only input mode indicator on home screen (small tag) */
+  .input-mode-badge {
+    margin-top: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--sakura);
+    text-shadow: 0 0 8px var(--sakura);
+    padding: 4px 12px;
+    border: 1px dashed var(--sakura);
+    display: inline-block;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
 </style>
 </head>
 <body>
@@ -939,6 +1024,22 @@
 
   <div class="credit-ingame">MADE BY <b>ALAKSHIT PRADHAN</b></div>
 
+  <!-- MOBILE: Hidden input that opens the phone keyboard when focused.
+       inputmode=text + autocorrect/autocapitalize/spellcheck OFF so Gboard
+       doesn't swipe-type or autocorrect while playing. -->
+  <input id="mobileInput"
+         type="text"
+         inputmode="text"
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"
+         aria-label="Typing input"
+         tabindex="-1" />
+
+  <!-- MOBILE: "Tap to type" hint shown when input loses focus during gameplay -->
+  <div class="tap-hint" id="tapHint">TAP TO TYPE</div>
+
   <!-- HOME SCREEN -->
   <div class="overlay" id="startScreen">
     <h1 class="brand">KEYRAXO</h1>
@@ -960,8 +1061,11 @@
       Enemy techniques descend from above. Type them to counter.<br>
       Your first key <b>LOCKS ON</b> — finish the word to unleash your technique.<br>
       <span class="p">PINK scrolls</span> drop jutsu. <span class="r">VILLAINS</span> appear every 5 stages.<br>
-      Press <kbd>1</kbd>–<kbd>4</kbd> to unleash stored jutsu. <kbd>ESC</kbd> to meditate.
+      <span id="desktopHint">Press <kbd>1</kbd>–<kbd>4</kbd> to unleash stored jutsu. <kbd>ESC</kbd> to meditate.</span>
+      <span id="mobileHint" style="display:none;">TAP a <span class="p">jutsu card</span> on the right to unleash it. TAP the screen to reopen the keyboard.</span>
     </div>
+
+    <div class="input-mode-badge" id="inputModeBadge" style="display:none;">◆ MOBILE KEYBOARD MODE ◆</div>
 
     <div class="credit">
       <span class="jp">製作</span>MADE BY <b>ALAKSHIT PRADHAN</b><span class="jp">アラクシット</span>
@@ -1608,6 +1712,15 @@ const charFrom    = $('charFrom');
 const charSig     = $('charSig');
 const charDesc    = $('charDesc');
 const charInfo    = $('charInfo');
+const mobileInput = $('mobileInput');
+const tapHint     = $('tapHint');
+
+// ---------------- DEVICE DETECTION ----------------
+// True on phones / tablets / touchscreens. Also true for laptops with touch
+// screens — that's fine because pointer: coarse means a finger-style pointer.
+const IS_TOUCH = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+              || ('ontouchstart' in window)
+              || (navigator.maxTouchPoints > 0);
 
 // ---------------- AUDIO ----------------
 let audioCtx = null;
@@ -2264,6 +2377,17 @@ function renderPowerups() {
     const d = document.createElement('div');
     d.className = 'pu-slot';
     d.innerHTML = `<div>${def.label}</div><div class="key">[${idx + 1}]</div>`;
+    // Touch devices: number keys 1–4 aren't practical on phones, so make the
+    // slot itself tappable. Desktop still uses keys (CSS hides the pointer).
+    if (IS_TOUCH) {
+      d.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!state.running || state.paused) return;
+        activatePowerup(idx);
+        // Refocus the hidden input so the keyboard stays up after tapping a jutsu
+        focusMobileInput();
+      });
+    }
     powerupsEl.appendChild(d);
   });
 }
@@ -2319,6 +2443,12 @@ function updateHUD() {
 }
 
 // ---------------- INPUT ----------------
+// Desktop: physical keyboard fires `keydown` reliably.
+// Mobile / touch: Gboard, SwiftKey, iOS keyboard often do NOT fire useful
+// `keydown` events (they fire 229 / "Unidentified" during IME composition).
+// So on mobile we read an invisible <input> via the `beforeinput` event,
+// which does fire reliably on every mobile keyboard.
+
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (state.running && !state.paused) pauseGame();
@@ -2338,6 +2468,81 @@ window.addEventListener('keydown', e => {
   if (!/^[a-z]$/.test(ch)) return;
   handleKey(ch);
 });
+
+// ---- Mobile input capture ----
+// We listen on `beforeinput` — this fires with `inputType === 'insertText'`
+// for every real keypress on mobile, even from Gboard/SwiftKey.
+// `e.data` is the string that WOULD be inserted. We iterate char-by-char so
+// swipe-typing (whole word in one event) still flows into the game naturally.
+if (mobileInput) {
+  mobileInput.addEventListener('beforeinput', e => {
+    if (!state.running || state.paused) {
+      e.preventDefault();
+      mobileInput.value = '';
+      return;
+    }
+    const type = e.inputType || '';
+    // Accept normal typing + IME composition text.
+    // Ignore deletions (the game has no backspace mechanic).
+    if (type === 'insertText' || type === 'insertCompositionText' ||
+        type === 'insertFromComposition' || type === 'insertReplacementText') {
+      const data = (e.data || '');
+      for (const raw of data) {
+        if (raw === '\n' || raw === '\r') continue;
+        if (['1','2','3','4'].includes(raw)) {
+          activatePowerup(parseInt(raw) - 1);
+          continue;
+        }
+        const ch = raw.toLowerCase();
+        if (/^[a-z]$/.test(ch)) handleKey(ch);
+      }
+    }
+    e.preventDefault();
+    // Clear so the input never accumulates text (keeps IME/autocorrect clean)
+    mobileInput.value = '';
+  });
+
+  // Belt-and-braces: if any char slips past beforeinput (rare IME paths),
+  // still reset so the input stays empty.
+  mobileInput.addEventListener('input', () => { mobileInput.value = ''; });
+
+  // Track focus so we can show the "TAP TO TYPE" hint when the user's keyboard
+  // has collapsed (happens on Android back-gesture, iOS Done button, etc.)
+  mobileInput.addEventListener('focus', () => {
+    if (tapHint) tapHint.classList.remove('show');
+  });
+  mobileInput.addEventListener('blur', () => {
+    if (state.running && !state.paused && IS_TOUCH && tapHint) {
+      tapHint.classList.add('show');
+    }
+  });
+}
+
+// Focus helper — must be called INSIDE a user-gesture handler (tap/click)
+// so that iOS/Android will actually open the keyboard. Safari is strict here.
+function focusMobileInput() {
+  if (!IS_TOUCH || !mobileInput) return;
+  mobileInput.value = '';
+  try { mobileInput.focus({ preventScroll: true }); }
+  catch (_) { mobileInput.focus(); }
+}
+function blurMobileInput() {
+  if (!mobileInput) return;
+  mobileInput.blur();
+  if (tapHint) tapHint.classList.remove('show');
+}
+
+// Tap anywhere in the game area during gameplay to re-focus the hidden input
+// (re-opens the phone keyboard if the user dismissed it).
+if (IS_TOUCH) {
+  game.addEventListener('pointerdown', e => {
+    if (!state.running || state.paused) return;
+    // Don't hijack taps on powerup slots / back button — those have their own handlers.
+    const t = e.target;
+    if (t && (t.closest('.pu-slot') || t.closest('.game-back-btn') || t.closest('.overlay'))) return;
+    focusMobileInput();
+  }, { passive: true });
+}
 
 function handleKey(ch) {
   if (!state.target) {
@@ -2413,7 +2618,14 @@ function loop(now) {
       }
     }
 
-    const h = game.clientHeight;
+    // Kill line: where a word "hits the base" and damages the player.
+    // On mobile, when the on-screen keyboard is open, window.visualViewport.height
+    // shrinks to the visible area above the keyboard — use THAT so words don't
+    // silently cross off-screen under the keyboard. Desktop keeps game.clientHeight.
+    let h = game.clientHeight;
+    if (IS_TOUCH && window.visualViewport) {
+      h = Math.min(h, window.visualViewport.height);
+    }
     const killLine = h - 150;
     for (const w of [...state.words]) {
       let speed = w.speed;
@@ -2488,14 +2700,30 @@ function startGame() {
   }, 500);
   lastT = 0;
   requestAnimationFrame(loop);
+
+  // Mobile: open the phone keyboard. This MUST run inside the user-gesture
+  // stack that triggered startGame() (FIGHT!/REMATCH button tap), otherwise
+  // iOS Safari will silently refuse to open the keyboard.
+  focusMobileInput();
 }
 
-function pauseGame() { state.paused = true; pauseScreen.classList.remove('hidden'); }
-function resumeGame() { state.paused = false; pauseScreen.classList.add('hidden'); lastT = 0; requestAnimationFrame(loop); }
+function pauseGame() {
+  state.paused = true;
+  pauseScreen.classList.remove('hidden');
+  blurMobileInput();
+}
+function resumeGame() {
+  state.paused = false;
+  pauseScreen.classList.add('hidden');
+  lastT = 0;
+  requestAnimationFrame(loop);
+  focusMobileInput();
+}
 
 function endGame() {
   state.running = false;
   sfx.over();
+  blurMobileInput();
   $('rScore').textContent  = state.score.toLocaleString();
   $('rWave').textContent   = state.wave;
   $('rWpm').textContent    = calcWPM();
@@ -2539,6 +2767,7 @@ function backToSelect() {
   startScreen.classList.add('hidden');
   charScreen.classList.remove('hidden');
   updateHighScoreDisplay();
+  blurMobileInput();
 }
 
 // ---------------- PERSISTENCE ----------------
@@ -2601,6 +2830,22 @@ buildCharGrid();
 selectCharacter('ichigo');
 updateHighScoreDisplay();
 resizeCanvases();
+
+// ---- Touch-device home-screen adjustments ----
+// Swap the "1–4 / ESC" desktop hint for a mobile-friendly one, and reveal
+// the "MOBILE KEYBOARD MODE" badge so the player knows what to expect.
+if (IS_TOUCH) {
+  const dh = $('desktopHint'), mh = $('mobileHint'), badge = $('inputModeBadge');
+  if (dh) dh.style.display = 'none';
+  if (mh) mh.style.display = '';
+  if (badge) badge.style.display = 'inline-block';
+}
+
+// When the phone keyboard opens/closes, visualViewport resizes — force a
+// canvas redraw so petals/FX don't look stretched. (No effect on desktop.)
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', resizeCanvases);
+}
 
 (function idle() {
   if (state.running) return;
